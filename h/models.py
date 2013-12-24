@@ -12,6 +12,8 @@ from horus.models import (
     UserGroupMixin,
 )
 
+from pyramid.authentication import SessionAuthenticationPolicy
+
 import transaction
 
 from pyramid_basemodel import Base, Session
@@ -131,8 +133,11 @@ class UserGroup(UserGroupMixin, Base):
 
 
 def groupfinder(userid, request):
-    user = request.user
+    if isinstance(userid, basestring):
+        return [userid]
+
     groups = None
+    user = request.user
     if user:
         groups = []
         for group in user.groups:
@@ -143,9 +148,11 @@ def groupfinder(userid, request):
 
 def includeme(config):
     registry = config.registry
+    config.include('horus')
     config.include('pyramid_basemodel')
     config.include('pyramid_tm')
 
+    config.set_authentication_policy(SessionAuthenticationPolicy())
     config.set_request_property(lib.user_property, 'user')
 
     if not registry.queryUtility(interfaces.IDBSession):
@@ -174,5 +181,3 @@ def includeme(config):
         consumer.ttl = ttl
         session.add(consumer)
         session.flush()
-
-    registry.consumer = consumer
